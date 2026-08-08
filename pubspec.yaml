@@ -1,0 +1,72 @@
+name: ibink_seller
+description: "iBink.me Seller — manage your products, stock, and orders in one place."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+  # Navigation
+  go_router: ^14.6.3
+
+  # Networking
+  http: ^1.2.2
+
+  # Local storage / auth persistence
+  shared_preferences: ^2.3.3
+
+  # Environment variables
+  flutter_dotenv: ^5.2.1
+
+  # Date formatting
+  intl: ^0.20.3
+  image_picker: ^1.2.3
+  image_cropper: ^8.0.0
+  webview_flutter: ^4.14.1
+  http_parser: ^4.1.2
+  mime: ^2.0.0
+  shimmer: ^3.0.0
+  mobile_scanner: ^7.3.0
+  barcode_widget: ^2.0.4
+  permission_handler: ^12.0.3
+  path_provider: ^2.1.6
+  image_gallery_saver_plus: ^5.1.1
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  audioplayers: ^6.8.1
+  share_plus: ^13.2.1
+  pdf: ^3.13.0
+  printing: ^5.15.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env
+    - assets/icons/
+    - assets/logo/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo/ibink_logo.png"
+  min_sdk_android: 21
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false
