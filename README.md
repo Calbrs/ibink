@@ -1,4 +1,4 @@
-# ibink
+# Zumimo
 
 A new Flutter project.
 

@@ -1,0 +1,845 @@
+import 'dart:math' as math;
+
+import 'package:country_flags/country_flags.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import 'auth_screen.dart';
+import 'oauth_webview_screen.dart';
+
+/// Height of the phone field and the buttons, so everything shares one baseline.
+const double _kControlHeight = 56;
+
+// Consent links (adjust once the pages go live).
+const String _kTermsUrl = 'https://api.zumimo.com/terms';
+const String _kPrivacyUrl = 'https://api.zumimo.com/privacy';
+
+/// Step 1 — phone number entry (login and register share this entry).
+class PhoneScreen extends StatefulWidget {
+  final AuthController controller;
+  final VoidCallback onPickCountry;
+
+  const PhoneScreen({
+    super.key,
+    required this.controller,
+    required this.onPickCountry,
+  });
+
+  @override
+  State<PhoneScreen> createState() => _PhoneScreenState();
+}
+
+class _PhoneScreenState extends State<PhoneScreen> {
+  final _focus = FocusNode();
+  final _emailFieldController = TextEditingController();
+  bool _emailMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Rebuild on every email edit so the Register button can enable/disable.
+    _emailFieldController.addListener(_rebuild);
+  }
+
+  void _rebuild() {
+    if (mounted) setState(() {});
+  }
+
+  /// Opens the Google/Apple consent flow in the in-app WebView. The provider
+  /// sends the browser back to the frontend with a handoff token — the
+  /// WebView intercepts it and [AuthController.completeSocial] resumes the
+  /// auth flow inside the app (challenge for login, email code for register).
+  Future<void> _startSocialFlow(
+    AuthController c,
+    OAuthProvider provider,
+  ) async {
+    final result = await OAuthWebViewScreen.show(
+      context,
+      provider: provider,
+      intent: _emailMode ? OAuthIntent.register : OAuthIntent.login,
+    );
+    if (result == null || !mounted) return;
+    c.completeSocial(result);
+  }
+
+  @override
+  void dispose() {
+    _emailFieldController.removeListener(_rebuild);
+    _focus.dispose();
+    _emailFieldController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.controller;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Equal flexible spacers push the brand row so it is vertically
+        // CENTERED in the band between the status bar and "Let's get you in."
+        const Spacer(),
+        // ---------- Onbaio brand row ----------
+        // Auth screens (phone step) only.
+        const Align(
+          alignment: Alignment.topCenter,
+          child: AuthBrandRow(logoHeight: 56),
+        ),
+        const Spacer(),
+        // ---------- Header Section ----------
+        // Adaptive: heading + note always stay on ONE horizontal line;
+        // FittedBox scales the whole row down proportionally to fit the
+        // available screen width (never overflows, never wraps).
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              const AuthHeading(title: "Let's get you in."),
+              const SizedBox(width: 6),
+              Text(
+                _emailMode ? "by Enter your email" : "by Enter your number",
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w900,
+                  color: const Color.fromARGB(255, 121, 121, 121),
+                  letterSpacing: 0.2,
+
+                  // Technique: w900 is Roboto's max weight, so tight
+                  // same-color shadows thicken the strokes visually.
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 30),
+        // ---------- Toggle: phone | email ----------
+        // One pill holding two segments; the active side is ink-filled.
+        // Switching only swaps the input bar below — same look for both.
+        _MethodToggle(
+          emailMode: _emailMode,
+          onPhone: () => setState(() => _emailMode = false),
+          onEmail: () => setState(() => _emailMode = true),
+        ),
+        const SizedBox(height: 12),
+        // ---------- Input bar: phone | email (same pill, swapped) ----------
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: _emailMode
+              ? _EmailBar(
+                  key: const ValueKey('email-bar'),
+                  controller: _emailFieldController,
+                )
+              : KeyedSubtree(
+                  key: const ValueKey('phone-bar'),
+                  child: Container(
+                    height: _kControlHeight,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999), // pill
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AuthCountryChip(
+                          isoCode: c.selectedCountry.isoCode,
+                          dialCode: c.selectedCountry.dialCode,
+                          onTap: widget.onPickCountry,
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 16),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Theme(
+                                data: Theme.of(context).copyWith(
+                                  inputDecorationTheme:
+                                      const InputDecorationTheme(
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        errorBorder: InputBorder.none,
+                                        focusedErrorBorder: InputBorder.none,
+                                        disabledBorder: InputBorder.none,
+                                        filled: false,
+                                        isCollapsed: true,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                  textSelectionTheme: TextSelectionThemeData(
+                                    cursorColor: Colors.black,
+                                    selectionColor: Colors.black.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    selectionHandleColor: Colors.black,
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: c.phoneController,
+                                  focusNode: _focus,
+                                  keyboardType: TextInputType.phone,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(12),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v.startsWith('0')) {
+                                      final stripped = v.replaceFirst(
+                                        RegExp(r'^0+'),
+                                        '',
+                                      );
+                                      c.phoneController.value =
+                                          TextEditingValue(
+                                            text: stripped,
+                                            selection: TextSelection.collapsed(
+                                              offset: stripped.length,
+                                            ),
+                                          );
+                                    }
+                                  },
+                                  cursorColor: Colors.black,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                    color: Colors.black,
+                                  ),
+                                  decoration: InputDecoration(
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    filled: false,
+                                    isCollapsed: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    hintText: '712 345 678',
+                                    hintStyle: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                      color: Colors.black.withValues(
+                                        alpha: 0.35,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+        ),
+
+        const SizedBox(height: 12),
+        AuthErrorBanner(c.errorMsg),
+        const SizedBox(height: 8),
+
+        // ---------- Continue Button ----------
+        // Login mode: sends the phone number to /auth/login.
+        // Register mode: opens the register form with the email prefilled.
+        _SendCodeButton(
+          label: _emailMode ? 'Register' : 'Send code',
+          loading: c.isLoading,
+          onPressed: _emailMode
+              ? (_emailFieldController.text.trim().isEmpty
+                    ? null
+                    : () => c.startRegister(email: _emailFieldController.text))
+              : c.login,
+        ),
+
+        const SizedBox(height: 28),
+
+        // ---------- Divider ----------
+        Row(
+          children: [
+            const Expanded(child: Divider(color: AuthColors.line, height: 1)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'or',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AuthColors.inkSoft.withValues(alpha: 0.8),
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+            const Expanded(child: Divider(color: AuthColors.line, height: 1)),
+          ],
+        ),
+
+        const SizedBox(height: 24),
+
+        // ---------- Social Login Buttons ----------
+        // Stacked: Apple on top, Google below.
+        // Apple icon → white (paper), Google icon → original colored "G".
+        //
+        // Login tab → intent=login (sign in with an existing seller).
+        // Register tab → intent=register (create the account via Google/
+        // Apple; using your own email still goes through the form above).
+        _SocialButton(
+          label: 'Continue with Apple',
+          leading: Image.asset(
+            'assets/icons/apple.png',
+            width: 20,
+            height: 20,
+            color: const Color.fromARGB(255, 4, 4, 4), // Apple: keep it white
+          ),
+          onPressed: c.isLoading
+              ? null
+              : () => _startSocialFlow(c, OAuthProvider.apple),
+        ),
+        const SizedBox(height: 14),
+        _SocialButton(
+          label: 'Continue with Google',
+          leading: _GoogleGLogo(size: 20),
+          onPressed: c.isLoading
+              ? null
+              : () => _startSocialFlow(c, OAuthProvider.google),
+        ),
+
+        // Flexible bottom breathing before the pinned footer.
+        const Spacer(),
+
+        // ---------- Terms / consent footer (pinned 20px from the bottom) ----------
+        Padding(
+          padding: const EdgeInsets.only(bottom: 20),
+          child: Text.rich(
+            TextSpan(
+              style: const TextStyle(
+                fontSize: 11.5,
+                height: 1.5,
+                fontWeight: FontWeight.w500,
+                color: AuthColors.inkSoft,
+              ),
+              children: [
+                const TextSpan(text: 'By signing up, you agree to our '),
+                _linkSpan('Terms & Conditions', _kTermsUrl),
+                const TextSpan(text: ', acknowledge our '),
+                _linkSpan('Privacy Policy', _kPrivacyUrl),
+                const TextSpan(
+                  text:
+                      ", and confirm that you're over 18. We may send "
+                      'promotions related to our services – you can '
+                      'unsubscribe anytime in Communication Settings under '
+                      'your profile.',
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bold, underlined, tappable link span for the consent footer.
+InlineSpan _linkSpan(String text, String url) {
+  return WidgetSpan(
+    alignment: PlaceholderAlignment.middle,
+    child: GestureDetector(
+      onTap: () async {
+        final uri = Uri.tryParse(url);
+        if (uri != null) {
+          await launchUrl(uri, mode: LaunchMode.platformDefault);
+        }
+      },
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 11.5,
+          height: 1.5,
+          fontWeight: FontWeight.w900,
+          color: AuthColors.ink,
+        ),
+      ),
+    ),
+  );
+}
+
+/// Primary action button, same look as the social buttons
+/// (ink background, light paper label).
+class _SendCodeButton extends StatelessWidget {
+  final String label;
+  final bool loading;
+  final VoidCallback? onPressed;
+
+  const _SendCodeButton({
+    required this.label,
+    required this.loading,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: _kControlHeight,
+      child: Material(
+        color: AuthColors.ink,
+        shape: const StadiumBorder(), // fully-rounded pill
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: loading ? null : onPressed,
+          splashColor: AuthColors.gold.withValues(alpha: 0.18),
+          highlightColor: AuthColors.gold.withValues(alpha: 0.08),
+          child: Center(
+            child: loading
+                ? const _BubbleLoader(color: AuthColors.paper)
+                : Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.1,
+                      color: AuthColors.paper,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Three horizontal bubbles that bounce, scale and fade in a wave.
+class _BubbleLoader extends StatefulWidget {
+  final Color color;
+
+  const _BubbleLoader({required this.color});
+
+  @override
+  State<_BubbleLoader> createState() => _BubbleLoaderState();
+}
+
+class _BubbleLoaderState extends State<_BubbleLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            // Each dot is offset in phase so the motion travels left → right.
+            final phase = (_ctrl.value - i * 0.18) % 1.0;
+            final v = (math.sin(phase * 2 * math.pi) + 1) / 2; // 0..1
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3.5),
+              child: Transform.translate(
+                offset: Offset(0, -4 * v),
+                child: Transform.scale(
+                  scale: 0.65 + 0.35 * v,
+                  child: Opacity(
+                    opacity: 0.4 + 0.6 * v,
+                    child: Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        color: widget.color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+/// Social sign-in button (transparent background, white border, white label).
+///
+/// Layout: icon pinned to the LEFT, label text CENTERED in the whole button.
+/// Uses a Stack so the text is perfectly centered regardless of icon width.
+class _SocialButton extends StatelessWidget {
+  final String label;
+  final Widget leading;
+  final VoidCallback? onPressed;
+
+  const _SocialButton({
+    required this.label,
+    required this.leading,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: onPressed == null ? 0.5 : 1,
+      child: SizedBox(
+        height: _kControlHeight,
+        child: Material(
+          color: Colors.transparent,
+          clipBehavior: Clip.antiAlias,
+          shape: const StadiumBorder(
+            side: BorderSide(color: AuthColors.line, width: 1.2),
+          ),
+          child: InkWell(
+            onTap: onPressed,
+            splashColor: Colors.white.withValues(alpha: 0.12),
+            highlightColor: Colors.white.withValues(alpha: 0.06),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Icon pinned to the left side, vertically centered.
+                Positioned(
+                  left: 18,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(child: leading),
+                ),
+                // Label centered in the full button width.
+                // Horizontal padding keeps it from overlapping the icon on narrow buttons.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 52),
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.1,
+                      color: Color.fromARGB(255, 1, 1, 1),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Flag + dial code + chevron. Opens the country picker.
+class AuthCountryChip extends StatelessWidget {
+  final String isoCode;
+  final String dialCode;
+  final VoidCallback onTap;
+
+  const AuthCountryChip({
+    super.key,
+    required this.isoCode,
+    required this.dialCode,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 0, 12, 0),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CountryFlag.fromCountryCode(
+              isoCode,
+              theme: const ImageTheme(
+                width: 26,
+                height: 18,
+                shape: RoundedRectangle(4),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              dialCode,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const AuthGlyph(
+              AuthGlyphType.chevronDown,
+              size: 16,
+              color: Colors.black,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Official multicolor Google "G" logo, painted from Google's own SVG path
+/// data (viewBox 0..24) with the official brand colors.
+class _GoogleGLogo extends StatelessWidget {
+  final double size;
+
+  const _GoogleGLogo({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: CustomPaint(
+        size: Size.square(size),
+        painter: const _GoogleGPainter(),
+      ),
+    );
+  }
+}
+
+class _GoogleGPainter extends CustomPainter {
+  const _GoogleGPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 24);
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    // Blue: right side + horizontal bar.
+    canvas.drawPath(
+      Path()
+        ..moveTo(22.56, 12.25)
+        ..relativeCubicTo(0, -0.78, -0.07, -1.53, -0.2, -2.25)
+        ..lineTo(12, 10)
+        ..lineTo(12, 14.26)
+        ..lineTo(17.92, 14.26)
+        ..relativeCubicTo(-0.26, 1.37, -1.04, 2.53, -2.21, 3.31)
+        ..lineTo(15.71, 20.34)
+        ..lineTo(19.28, 20.34)
+        ..relativeCubicTo(2.08, -1.92, 3.28, -4.74, 3.28, -8.09)
+        ..close(),
+      paint..color = const Color(0xFF4285F4),
+    );
+
+    // Green: bottom sweep.
+    canvas.drawPath(
+      Path()
+        ..moveTo(12, 23)
+        ..relativeCubicTo(2.97, 0, 5.46, -0.98, 7.28, -2.66)
+        ..relativeLineTo(-3.57, -2.77)
+        ..relativeCubicTo(-0.98, 0.66, -2.23, 1.06, -3.71, 1.06)
+        ..relativeCubicTo(-2.86, 0, -5.29, -1.93, -6.16, -4.53)
+        ..lineTo(2.18, 14.09)
+        ..lineTo(2.18, 16.93)
+        ..cubicTo(3.99, 20.53, 7.7, 23, 12, 23)
+        ..close(),
+      paint..color = const Color(0xFF34A853),
+    );
+
+    // Yellow: left side.
+    canvas.drawPath(
+      Path()
+        ..moveTo(5.84, 14.09)
+        ..relativeCubicTo(-0.22, -0.66, -0.35, -1.36, -0.35, -2.09)
+        ..cubicTo(5.49, 11.27, 5.62, 10.57, 5.84, 9.91)
+        ..lineTo(5.84, 7.07)
+        ..lineTo(2.18, 7.07)
+        ..cubicTo(1.43, 8.55, 1, 10.22, 1, 12)
+        ..cubicTo(1, 13.78, 1.43, 15.45, 2.18, 16.93)
+        ..relativeLineTo(2.85, -2.22)
+        ..relativeLineTo(0.81, -0.62)
+        ..close(),
+      paint..color = const Color(0xFFFBBC05),
+    );
+
+    // Red: top sweep.
+    canvas.drawPath(
+      Path()
+        ..moveTo(12, 5.38)
+        ..relativeCubicTo(1.62, 0, 3.06, 0.56, 4.21, 1.64)
+        ..relativeLineTo(3.15, -3.15)
+        ..cubicTo(17.45, 2.09, 14.97, 1, 12, 1)
+        ..cubicTo(7.7, 1, 3.99, 3.47, 2.18, 7.07)
+        ..relativeLineTo(3.66, 2.84)
+        ..relativeCubicTo(0.87, -2.6, 3.3, -4.53, 6.16, -4.53)
+        ..close(),
+      paint..color = const Color(0xFFEA4335),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Segmented pill toggle: [Phone number | Email]. Both segments share the
+/// same look; the active one gets the ink fill with a paper label.
+class _MethodToggle extends StatelessWidget {
+  final bool emailMode;
+  final VoidCallback onPhone;
+  final VoidCallback onEmail;
+
+  const _MethodToggle({
+    required this.emailMode,
+    required this.onPhone,
+    required this.onEmail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE0E0E0),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _ModeSegment(
+              label: 'Login',
+              selected: !emailMode,
+              onTap: onPhone,
+            ),
+          ),
+          Expanded(
+            child: _ModeSegment(
+              label: 'Register',
+              selected: emailMode,
+              onTap: onEmail,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeSegment extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ModeSegment({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AuthColors.ink : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w800,
+            color: selected ? AuthColors.paper : AuthColors.inkSoft,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Email input bar — same pill look as the phone-number bar.
+class _EmailBar extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _EmailBar({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: _kControlHeight,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999), // pill
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    inputDecorationTheme: const InputDecorationTheme(
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      filled: false,
+                      isCollapsed: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    textSelectionTheme: TextSelectionThemeData(
+                      cursorColor: Colors.black,
+                      selectionColor: Colors.black.withValues(alpha: 0.2),
+                      selectionHandleColor: Colors.black,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    autofillHints: const [AutofillHints.email],
+                    cursorColor: Colors.black,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: Colors.black,
+                    ),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                      isCollapsed: true,
+                      contentPadding: EdgeInsets.zero,
+                      hintText: 'name@example.com',
+                      hintStyle: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color: Colors.black.withValues(alpha: 0.35),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

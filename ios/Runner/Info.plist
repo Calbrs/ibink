@@ -9,7 +9,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>iBink.me</string>
+	<string>Onbaio</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -17,7 +17,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>iBink.me</string>
+	<string>Onbaio</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -67,6 +67,17 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Tunahitaji ruhusa ya kuchagua video ya bidhaa ili kuituma kwenye TikTok.</string>
+	<!--
+	  Required for canLaunchUrl() to detect TikTok on iOS. Without these schemes
+	  declared, the "Fungua TikTok" button silently fails instead of opening the app.
+	-->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tiktok</string>
+		<string>snssdk1233</string>
 	</array>
 </dict>
 </plist>

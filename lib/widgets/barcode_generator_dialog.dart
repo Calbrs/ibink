@@ -151,7 +151,7 @@ class _BarcodeGeneratorDialogState extends State<BarcodeGeneratorDialog> {
                         ),
                       ),
                       const Text(
-                        'ibink.me',
+                        'Onbaio',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,

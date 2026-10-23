@@ -110,6 +110,54 @@ extension OrderStatusExtension on OrderStatus {
   }
 }
 
+enum OrderPaymentStatus {
+  unpaid,
+  partiallyPaid,
+  paid,
+  disputed,
+}
+
+extension OrderPaymentStatusExtension on OrderPaymentStatus {
+  String get label {
+    switch (this) {
+      case OrderPaymentStatus.unpaid:
+        return 'Haijalipiwa';
+      case OrderPaymentStatus.partiallyPaid:
+        return 'Imelipiwa Sehemu';
+      case OrderPaymentStatus.paid:
+        return 'Imelipiwa';
+      case OrderPaymentStatus.disputed:
+        return 'Ipogomewa';
+    }
+  }
+
+  String get color {
+    switch (this) {
+      case OrderPaymentStatus.unpaid:
+        return '#F44336';
+      case OrderPaymentStatus.partiallyPaid:
+        return '#FF9800';
+      case OrderPaymentStatus.paid:
+        return '#4CAF50';
+      case OrderPaymentStatus.disputed:
+        return '#9C27B0';
+    }
+  }
+
+  static OrderPaymentStatus fromApiValue(String value) {
+    switch (value.toLowerCase()) {
+      case 'partially_paid':
+        return OrderPaymentStatus.partiallyPaid;
+      case 'paid':
+        return OrderPaymentStatus.paid;
+      case 'disputed':
+        return OrderPaymentStatus.disputed;
+      default:
+        return OrderPaymentStatus.unpaid;
+    }
+  }
+}
+
 // ── OrderModel ────────────────────────────────────────────────────────────────
 // Inaakisi formatOrder() kutoka Laravel:
 //   id, order_number, status, buyer_phone, delivery_address,
@@ -129,6 +177,7 @@ class OrderModel {
   final double totalAmount; // = product_price kutoka backend (bila service_fee)
   final DateTime createdAt;
   final DateTime updatedAt;
+  final OrderPaymentStatus paymentStatus;
   final OrderProductSnapshot? product;
 
   const OrderModel({
@@ -140,6 +189,7 @@ class OrderModel {
     required this.totalAmount,
     required this.createdAt,
     required this.updatedAt,
+    this.paymentStatus = OrderPaymentStatus.unpaid,
     this.product,
   });
 
@@ -165,6 +215,9 @@ class OrderModel {
       updatedAt: json['updated_at'] != null
           ? (DateTime.tryParse(json['updated_at'].toString())?.toLocal() ?? DateTime.now())
           : DateTime.now(),
+      paymentStatus: OrderPaymentStatusExtension.fromApiValue(
+        (json['payment_status'] ?? 'unpaid').toString(),
+      ),
       product: productData != null
           ? OrderProductSnapshot.fromJson(productData)
           : null,
@@ -181,6 +234,7 @@ class OrderModel {
       totalAmount: totalAmount,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      paymentStatus: paymentStatus,
       product: product,
     );
   }

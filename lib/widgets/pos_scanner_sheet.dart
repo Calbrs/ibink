@@ -27,7 +27,7 @@ class PosScannerSheet extends StatefulWidget {
 
 class _PosScannerSheetState extends State<PosScannerSheet> {
   final MobileScannerController _controller = MobileScannerController(
-    formats: const [
+    formats: [
       BarcodeFormat.ean13,
       BarcodeFormat.ean8,
       BarcodeFormat.upcA,
@@ -35,7 +35,6 @@ class _PosScannerSheetState extends State<PosScannerSheet> {
       BarcodeFormat.code128,
       BarcodeFormat.code39,
       BarcodeFormat.code93,
-      BarcodeFormat.itf14,
       BarcodeFormat.codabar,
     ],
   );

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -7,7 +6,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/revenue_model.dart';
 import '../core/session.dart';
-import '../widgets/notification_modals.dart';
 
 class PdfReport {
   static Future<void> generateAndPrintRevenueReport(RevenueSummary summary, String rangeLabel) async {
@@ -121,7 +119,7 @@ class PdfReport {
             borderRadius: pw.BorderRadius.circular(8),
           ),
           child: pw.Text(
-            'IBINK.ME',
+            'ONBAIO',
             style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.green800),
           ),
         ),

@@ -18,7 +18,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
 
     <application
-        android:label="iBink.me"
+        android:label="Onbaio"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
@@ -61,5 +61,14 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+
+        <!--
+          Android 11+ hides other apps by default, so canLaunchUrl() always
+          returns false for TikTok unless its package is declared here.
+          Without this the "Fungua TikTok" button silently does nothing.
+          musically is the global build; trill is the regional alternative.
+        -->
+        <package android:name="com.zhiliaoapp.musically" />
+        <package android:name="com.ss.android.ugc.trill" />
     </queries>
 </manifest>

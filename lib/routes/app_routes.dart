@@ -3,19 +3,29 @@ import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../core/session.dart';
 import '../models/product_model.dart';
-import '../screens/splash_screen.dart';
-import '../screens/auth_screen.dart';
-import '../screens/dashboard_screen.dart';
-import '../screens/products_screen.dart';
-import '../screens/product_form_screen.dart';
+import '../models/payment_confirmation.dart';
+import '../screens/auth/splash_screen.dart';
+import '../screens/auth/auth_screen.dart';
+import '../screens/dashboard/dashboard_screen.dart';
+import '../screens/products/products_screen.dart';
+import '../screens/products/product_form_screen.dart';
 import '../models/order_model.dart';
-import '../screens/orders_screen.dart';
-import '../screens/profile_screen.dart';
-import '../screens/settings_screen.dart';
-import '../screens/product_detail_screen.dart';
-import '../screens/revenue_screen.dart';
-import '../screens/notifications_screen.dart';
-import '../screens/barcodes_screen.dart';
+import '../screens/orders/orders_screen.dart';
+import '../screens/profile/profile_screen.dart';
+import '../screens/profile/settings_screen.dart';
+import '../screens/products/product_detail_screen.dart';
+import '../screens/dashboard/revenue_screen.dart';
+import '../screens/dashboard/notifications_screen.dart';
+import '../screens/tools/barcodes_screen.dart';
+import '../screens/tiktok/tiktok_callback_screen.dart';
+import '../screens/tiktok/tiktok_screen.dart';
+import '../screens/tiktok/tiktok_webview_screen.dart';
+import '../screens/tiktok/tiktok_videos_screen.dart';
+import '../screens/tiktok/tiktok_settings_screen.dart';
+import '../screens/tiktok/tiktok_video_player_screen.dart';
+import '../screens/tools/logs_screen.dart';
+import '../screens/payments/payment_inbox_screen.dart';
+import '../screens/payments/payment_review_screen.dart';
 import 'app_browser.dart';
 
 class AppRoutes {
@@ -32,6 +42,15 @@ class AppRoutes {
   static const String notifications = '/dashboard/notifications';
   static const String browser = '/browser';
   static const String barcodes = '/profile/barcodes';
+  static const String tiktokCallback = '/tiktok/callback';
+  static const String tiktokWebView = '/tiktok/webview';
+  static const String tiktokVideos = '/tiktok/videos';
+  static const String tiktokSettings = '/tiktok/settings';
+  static const String tiktokVideoPlayer = '/tiktok/video';
+  static const String tiktok = '/tiktok';
+  static const String payments = '/payments';
+  static const String paymentReview = '/payments/review';
+  static const String logs = '/profile/logs';
 }
 
 /// Helper Method ya kutengeneza Bounce Transition (inayoiga motion ya navbar yako)
@@ -44,10 +63,7 @@ CustomTransitionPage<T> _buildBouncyPageTransition<T>({
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       // 1. Scale Transition: Inaanza ndogo (0.88) na kutanuka na bounce (Curves.easeOutBack)
-      final scaleTransition = Tween<double>(
-        begin: 0.88,
-        end: 1.0,
-      ).animate(
+      final scaleTransition = Tween<double>(begin: 0.88, end: 1.0).animate(
         CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutBack, // Inapaa na kudunda kwa mbele
@@ -59,19 +75,11 @@ CustomTransitionPage<T> _buildBouncyPageTransition<T>({
       final fadeTransition = Tween<double>(
         begin: 0.0,
         end: 1.0,
-      ).animate(
-        CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeInOut,
-        ),
-      );
+      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut));
 
       return FadeTransition(
         opacity: fadeTransition,
-        child: ScaleTransition(
-          scale: scaleTransition,
-          child: child,
-        ),
+        child: ScaleTransition(scale: scaleTransition, child: child),
       );
     },
     // Muda wa transition kulingana na kasi ya app yako
@@ -85,18 +93,14 @@ final GoRouter appRouter = GoRouter(
   routes: [
     GoRoute(
       path: AppRoutes.splash,
-      pageBuilder: (context, state) => _buildBouncyPageTransition(
-        state: state,
-        child: const SplashScreen(),
-      ),
+      pageBuilder: (context, state) =>
+          _buildBouncyPageTransition(state: state, child: const SplashScreen()),
       redirect: (context, state) => null,
     ),
     GoRoute(
       path: AppRoutes.auth,
-      pageBuilder: (context, state) => _buildBouncyPageTransition(
-        state: state,
-        child: const AuthScreen(),
-      ),
+      pageBuilder: (context, state) =>
+          _buildBouncyPageTransition(state: state, child: const AuthScreen()),
       redirect: (context, state) {
         if (Session.instance.isLoggedIn) {
           return AppRoutes.dashboard;
@@ -123,7 +127,9 @@ final GoRouter appRouter = GoRouter(
         final extra = state.extra;
         return _buildBouncyPageTransition(
           state: state,
-          child: ProductFormScreen(product: extra is ProductModel ? extra : null),
+          child: ProductFormScreen(
+            product: extra is ProductModel ? extra : null,
+          ),
         );
       },
       redirect: (context, state) {
@@ -137,14 +143,11 @@ final GoRouter appRouter = GoRouter(
       path: '${AppRoutes.products}/:id',
       pageBuilder: (context, state) {
         final extra = state.extra;
-        final childWidget = extra is ProductModel 
-            ? ProductDetailScreen(product: extra) 
+        final childWidget = extra is ProductModel
+            ? ProductDetailScreen(product: extra)
             : const ProductsScreen();
-            
-        return _buildBouncyPageTransition(
-          state: state,
-          child: childWidget,
-        );
+
+        return _buildBouncyPageTransition(state: state, child: childWidget);
       },
       redirect: (context, state) {
         if (!Session.instance.isLoggedIn) {
@@ -183,7 +186,9 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.browser,
       pageBuilder: (context, state) {
         final extra = state.extra;
-        final data = extra is Map<String, String> ? extra : const <String, String>{};
+        final data = extra is Map<String, String>
+            ? extra
+            : const <String, String>{};
         return _buildBouncyPageTransition(
           state: state,
           child: AppBrowserScreen(
@@ -205,6 +210,160 @@ final GoRouter appRouter = GoRouter(
         state: state,
         child: const BarcodesScreen(),
       ),
+      redirect: (context, state) {
+        if (!Session.instance.isLoggedIn) {
+          return AppRoutes.auth;
+        }
+        return null;
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.logs,
+      pageBuilder: (context, state) =>
+          _buildBouncyPageTransition(state: state, child: const LogsScreen()),
+      redirect: (context, state) {
+        if (!Session.instance.isLoggedIn) {
+          return AppRoutes.auth;
+        }
+        return null;
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.tiktokSettings,
+      pageBuilder: (context, state) => _buildBouncyPageTransition(
+        state: state,
+        child: const TikTokSettingsScreen(),
+      ),
+      redirect: (context, state) {
+        if (!Session.instance.isLoggedIn) {
+          return AppRoutes.auth;
+        }
+        return null;
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.tiktokVideos,
+      pageBuilder: (context, state) => _buildBouncyPageTransition(
+        state: state,
+        child: const TikTokVideosScreen(),
+      ),
+      redirect: (context, state) {
+        if (!Session.instance.isLoggedIn) {
+          return AppRoutes.auth;
+        }
+        return null;
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.tiktokVideoPlayer,
+      pageBuilder: (context, state) {
+        final extra = state.extra;
+        final data = extra is Map ? extra : const <String, dynamic>{};
+        return _buildBouncyPageTransition(
+          state: state,
+          child: TikTokVideoPlayerScreen(
+            videoId: (data['id'] as String?) ?? '',
+            title: (data['title'] as String?) ?? 'Video',
+            embedLink: data['embed'] as String?,
+          ),
+        );
+      },
+      redirect: (context, state) {
+        if (!Session.instance.isLoggedIn) {
+          return AppRoutes.auth;
+        }
+        return null;
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.tiktokWebView,
+      pageBuilder: (context, state) {
+        final extra = state.extra;
+        final url = extra is Map ? extra['url'] as String? : null;
+        if (url == null || url.isEmpty) {
+          return _buildBouncyPageTransition(
+            state: state,
+            child: const TikTokScreen(),
+          );
+        }
+        return _buildBouncyPageTransition(
+          state: state,
+          child: TikTokWebViewScreen(url: url),
+        );
+      },
+      redirect: (context, state) {
+        if (!Session.instance.isLoggedIn) {
+          return AppRoutes.auth;
+        }
+        return null;
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.tiktokCallback,
+      pageBuilder: (context, state) {
+        // Prefer `extra` from the WebView hand-off; fall back to query params
+        // so a future deep link (ibink://tiktok/callback?code=…&state=…)
+        // keeps working without changing this route.
+        final extra = state.extra;
+        final code = extra is Map && extra['code'] is String
+            ? extra['code'] as String
+            : (state.uri.queryParameters['code'] ?? '');
+        final stateParam = extra is Map && extra['state'] is String
+            ? extra['state'] as String
+            : (state.uri.queryParameters['state'] ?? '');
+        return _buildBouncyPageTransition(
+          state: state,
+          child: TikTokCallbackScreen(code: code, state: stateParam),
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.tiktok,
+      pageBuilder: (context, state) =>
+          _buildBouncyPageTransition(state: state, child: const TikTokScreen()),
+      redirect: (context, state) {
+        if (!Session.instance.isLoggedIn) {
+          return AppRoutes.auth;
+        }
+        return null;
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.payments,
+      pageBuilder: (context, state) {
+        final statusStr = state.uri.queryParameters['status'];
+        PaymentConfirmationStatus? filter;
+        if (statusStr != null) {
+          try {
+            filter = PaymentConfirmationStatus.values.firstWhere(
+              (e) => e.name == statusStr,
+            );
+          } catch (_) {}
+        }
+        return _buildBouncyPageTransition(
+          state: state,
+          child: PaymentInboxScreen(initialFilter: filter),
+        );
+      },
+      redirect: (context, state) {
+        if (!Session.instance.isLoggedIn) {
+          return AppRoutes.auth;
+        }
+        return null;
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.paymentReview,
+      pageBuilder: (context, state) {
+        final extra = state.extra;
+        final confirmation = extra is PaymentConfirmation ? extra : null;
+        return _buildBouncyPageTransition(
+          state: state,
+          child: confirmation != null
+              ? PaymentReviewScreen(confirmation: confirmation)
+              : const PaymentInboxScreen(),
+        );
+      },
       redirect: (context, state) {
         if (!Session.instance.isLoggedIn) {
           return AppRoutes.auth;
@@ -251,7 +410,9 @@ final GoRouter appRouter = GoRouter(
                 OrderStatus? filter;
                 if (statusStr != null) {
                   try {
-                    filter = OrderStatus.values.firstWhere((e) => e.name == statusStr);
+                    filter = OrderStatus.values.firstWhere(
+                      (e) => e.name == statusStr,
+                    );
                   } catch (_) {}
                 }
                 return OrdersScreen(initialFilter: filter);
@@ -361,10 +522,8 @@ class _AppShell extends StatelessWidget {
       body: shell,
       bottomNavigationBar: _PilledNavBar(
         currentIndex: shell.currentIndex,
-        onSelected: (index) => shell.goBranch(
-          index,
-          initialLocation: index == shell.currentIndex,
-        ),
+        onSelected: (index) =>
+            shell.goBranch(index, initialLocation: index == shell.currentIndex),
       ),
     );
   }
@@ -374,10 +533,7 @@ class _PilledNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onSelected;
 
-  const _PilledNavBar({
-    required this.currentIndex,
-    required this.onSelected,
-  });
+  const _PilledNavBar({required this.currentIndex, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -393,11 +549,11 @@ class _PilledNavBar extends StatelessWidget {
         height: 64,
         margin: const EdgeInsets.only(bottom: 0),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFF1D1507),
           borderRadius: BorderRadius.circular(999),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.10),
+              color: Colors.black.withValues(alpha: 0.20),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -416,13 +572,12 @@ class _PilledNavBar extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 420),
                   curve: Curves.elasticOut,
-                  margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  transform: Matrix4.translationValues(
-                    0,
-                    isActive ? -6 : 0,
-                    0,
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 8,
                   ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  transform: Matrix4.translationValues(0, isActive ? -6 : 0, 0),
                   transformAlignment: Alignment.center,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -432,12 +587,31 @@ class _PilledNavBar extends StatelessWidget {
                         scale: isActive ? 1.22 : 1.0,
                         duration: const Duration(milliseconds: 320),
                         curve: Curves.easeOutBack,
-                        child: Image.asset(
-                          isActive ? item.activeIconAsset : item.iconAsset,
-                          width: 22,
-                          height: 22,
-                          color: isActive ? AppColors.green : AppColors.inkSoft,
-                        ),
+                        child: isActive
+                            ? ShaderMask(
+                                blendMode: BlendMode.srcIn,
+                                shaderCallback: (bounds) =>
+                                    const LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        AppColors.gold,
+                                        AppColors.goldLight,
+                                      ],
+                                    ).createShader(bounds),
+                                child: Image.asset(
+                                  item.activeIconAsset,
+                                  width: 22,
+                                  height: 22,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Image.asset(
+                                item.iconAsset,
+                                width: 22,
+                                height: 22,
+                                color: Colors.white.withValues(alpha: 0.55),
+                              ),
                       ),
                       AnimatedSize(
                         duration: const Duration(milliseconds: 260),
@@ -453,7 +627,7 @@ class _PilledNavBar extends StatelessWidget {
                                     style: const TextStyle(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.green,
+                                      color: AppColors.gold,
                                     ),
                                   ),
                                 )

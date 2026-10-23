@@ -1,0 +1,78 @@
+{
+  // Background mirror of the app's device log into <project>/flutter.log.
+  //
+  // "app: mirror device log (background)" starts on folder open so flutter.log
+  // is always up to date, no matter how you launch the app — flutter run, the
+  // VS Code debugger, or Android Studio. It polls the device via adb and does
+  // not take over `flutter run`, so hot reload and the debugger are unaffected.
+  //
+  // Requires a debuggable build. Stop it from Terminal > Tasks > Stop Task, or
+  // just close the project.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "app: mirror device log (background)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/tool/sync_log.ps1",
+        "-Watch"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "isBackground": true,
+      "runOn": "folderOpen",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "app: copy device log once",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/tool/sync_log.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "app: run with log capture (flutter run + tee)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/tool/dev_log.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

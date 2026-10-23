@@ -12,7 +12,7 @@ class BarcodeScannerSheet extends StatefulWidget {
 class _BarcodeScannerSheetState extends State<BarcodeScannerSheet> {
   final MobileScannerController _controller = MobileScannerController(
     // Ruhusu 1D barcodes tu. Kataa QR Code, Data Matrix, Aztec, n.k.
-    formats: const [
+    formats: [
       BarcodeFormat.ean13,
       BarcodeFormat.ean8,
       BarcodeFormat.upcA,
@@ -20,7 +20,6 @@ class _BarcodeScannerSheetState extends State<BarcodeScannerSheet> {
       BarcodeFormat.code128,
       BarcodeFormat.code39,
       BarcodeFormat.code93,
-      BarcodeFormat.itf14,
       BarcodeFormat.codabar,
     ],
   );

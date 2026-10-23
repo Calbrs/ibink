@@ -1,7 +1,9 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
+import 'app_logger.dart';
 import 'api_client.dart';
 import 'api_config.dart';
+
+const String _tag = 'Session';
 
 class Session {
   Session._();
@@ -95,6 +97,12 @@ class Session {
     if (_phoneToken != null && _phoneToken!.isNotEmpty) {
       ApiClient.instance.setPhoneToken(_phoneToken!);
     }
+
+    AppLogger.instance.info(
+      _tag,
+      'Session init: loggedIn=$isLoggedIn registered=$_isRegistered '
+      'role=${_role ?? 'unknown'} userId=${_userId ?? 'none'}',
+    );
   }
 
   Future<void> ensureTokenInApiClient() async {
@@ -137,6 +145,12 @@ class Session {
     _isRegistered = registered;
     await prefs.setBool(_keyIsRegistered, _isRegistered);
 
+    AppLogger.instance.info(
+      _tag,
+      'Login saved: registered=$registered role=${_role ?? 'unknown'} '
+      'hasToken=${newToken?.isNotEmpty == true}',
+    );
+
     await _applyProfileFields(data, prefs);
 
     // If no account_data, but we have phone_number, store it
@@ -154,7 +168,7 @@ class Session {
 
     final res = await ApiClient.instance.get(ApiConfig.userProfileEndpoint);
     if (!res.success || res.data == null) {
-      if (kDebugMode) debugPrint('[Session] refreshProfile failed: ${res.error}');
+      AppLogger.instance.warn(_tag, 'refreshProfile failed: ${res.error}');
       return false;
     }
 
@@ -320,9 +334,7 @@ class Session {
     _shippingAddress = null;
 
     ApiClient.instance.clearToken();
-    if (kDebugMode) {
-      debugPrint('[Session] Logged out, data cleared.');
-    }
+    AppLogger.instance.info(_tag, 'Logged out, all local session data cleared.');
   }
 
   Future<void> clear() async {

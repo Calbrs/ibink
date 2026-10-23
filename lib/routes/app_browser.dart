@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../core/theme.dart';
 
-// In-app browser (WebView) -- inatumika badala ya kufungua app nyingine
-// (mfano TikTok/Instagram/Facebook) nje ya app hii.
-// Inafikiwa kupitia go_router kama routes nyingine (angalia AppRoutes.browser).
+/// Generic in-app browser.
+///
+/// Used for read-only browsing (Instagram, Facebook, a TikTok profile page).
+/// It deliberately does NOT intercept navigation or sniff OAuth params — the
+/// TikTok connect flow lives in TikTokWebViewScreen so that its callback
+/// handling stays isolated from everything else that opens a WebView.
 class AppBrowserScreen extends StatefulWidget {
   final String url;
   final String title;
@@ -33,14 +36,12 @@ class _AppBrowserScreenState extends State<AppBrowserScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (progress) {
-            if (mounted) {
-              setState(() => _progress = progress / 100);
-            }
+            if (mounted) setState(() => _progress = progress / 100);
           },
-          onPageStarted: (_) {
+          onPageStarted: (url) {
             if (mounted) setState(() => _isLoading = true);
           },
-          onPageFinished: (_) {
+          onPageFinished: (url) {
             if (mounted) setState(() => _isLoading = false);
           },
         ),

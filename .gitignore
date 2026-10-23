@@ -23,6 +23,11 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
+# Development log mirrored off the device by tool/sync_log.ps1.
+# (Already covered by *.log above, listed explicitly for clarity.)
+flutter.log
+flutter.log.1
+
 # Environment secrets
 .env
 

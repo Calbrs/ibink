@@ -8,11 +8,38 @@ class LocalStorage {
 
   static const String _boxProducts = 'products_box';
   static const String _boxPendingSales = 'pending_sales_box';
+  static const String _boxTikTokSettings = 'tiktok_settings_box';
 
   Future<void> init() async {
     await Hive.initFlutter();
     await Hive.openBox<String>(_boxProducts);
     await Hive.openBox<String>(_boxPendingSales);
+    await Hive.openBox<String>(_boxTikTokSettings);
+  }
+
+  // --- TikTok posting settings ---
+
+  Future<void> saveTikTokSettings(Map<String, dynamic> settings) async {
+    final box = Hive.box<String>(_boxTikTokSettings);
+    await box.put('settings', jsonEncode(settings));
+  }
+
+  Map<String, dynamic>? getTikTokSettings() {
+    final box = Hive.box<String>(_boxTikTokSettings);
+    final data = box.get('settings');
+    if (data == null) return null;
+
+    try {
+      final decoded = jsonDecode(data);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> clearTikTokSettings() async {
+    final box = Hive.box<String>(_boxTikTokSettings);
+    await box.delete('settings');
   }
 
   // --- Products Cache ---

@@ -41,7 +41,7 @@ final SellerProfileModel dummySellerProfile = SellerProfileModel(
   userId: 'u1',
   businessName: 'Amara Crafts & Goods',
   ownerName: 'Amara Osei',
-  email: 'amara@ibink.me',
+  email: 'amara@zumimo.com',
   phone: '+254 712 345 678',
   bio: 'Quality products, sourced from local artisans across the region.',
   location: 'Nairobi, Kenya',
